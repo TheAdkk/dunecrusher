@@ -50,6 +50,9 @@ public:
     bool loadPresetFromXmlFile(const juce::File& file);
 
     juce::String getDisplayPresetLabel() const;
+    juce::String getProgramCategory(int index) const;
+    juce::String getDisplayPresetCategory() const;
+    bool hasCustomDisplayLabel() const;
     uint64_t getDisplayLabelVersion() const noexcept { return displayLabelVersion_.load(std::memory_order_acquire); }
 
     float getMeterPeakL() const noexcept { return meterPeakL_.load(std::memory_order_relaxed); }

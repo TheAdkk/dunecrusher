@@ -243,6 +243,29 @@ juce::String DuneCrusherProcessor::getDisplayPresetLabel() const {
     return "Init (Clean)";
 }
 
+juce::String DuneCrusherProcessor::getProgramCategory(int index) const {
+    const juce::ScopedLock sl(presetsLock_);
+    if (index >= 0 && index < static_cast<int>(presets_.size())) {
+        return juce::String(presets_[static_cast<size_t>(index)].category);
+    }
+    return "USER";
+}
+
+juce::String DuneCrusherProcessor::getDisplayPresetCategory() const {
+    const juce::ScopedLock sl(presetsLock_);
+    if (customDisplayLabel_.isNotEmpty()) return "USER";
+    const int idx = currentProgram_.load(std::memory_order_relaxed);
+    if (idx >= 0 && idx < static_cast<int>(presets_.size())) {
+        return juce::String(presets_[static_cast<size_t>(idx)].category);
+    }
+    return "UTILITY";
+}
+
+bool DuneCrusherProcessor::hasCustomDisplayLabel() const {
+    const juce::ScopedLock sl(presetsLock_);
+    return customDisplayLabel_.isNotEmpty();
+}
+
 void DuneCrusherProcessor::setCustomDisplayLabel(const juce::String& label) {
     {
         const juce::ScopedLock sl(presetsLock_);

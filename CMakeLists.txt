@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(DuneCrusher VERSION 1.0.0 LANGUAGES C CXX)
+project(DuneCrusher VERSION 1.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,12 +37,20 @@ juce_add_plugin(DuneCrusher
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD FALSE
     AU_MAIN_TYPE kAudioUnitType_Effect
     AU_SANDBOX_SAFE TRUE
     VST3_CATEGORIES Fx Distortion Dynamics Filter
 )
+
+juce_add_binary_data(DuneCrusherWebUI
+    HEADER_NAME DuneCrusherWebUI.h
+    NAMESPACE dunecrusher_webui
+    SOURCES
+        ui/dist/index.html
+)
+set_target_properties(DuneCrusherWebUI PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 target_sources(DuneCrusher
     PRIVATE
@@ -58,16 +66,21 @@ target_include_directories(DuneCrusher
 
 target_compile_definitions(DuneCrusher
     PUBLIC
-        JUCE_WEB_BROWSER=0
+        JUCE_WEB_BROWSER=1
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_REPORT_APP_USAGE=0
 )
+if(WIN32)
+    target_compile_definitions(DuneCrusher PUBLIC JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1)
+endif()
 
 target_link_libraries(DuneCrusher
     PRIVATE
+        DuneCrusherWebUI
         juce::juce_audio_utils
         juce::juce_audio_processors
+        juce::juce_gui_extra
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -86,14 +99,11 @@ if(DUNECRUSHER_BUILD_TESTS)
     target_sources(dunecrusher_verify
         PRIVATE
             tests/verify_plugin.cpp
-            src/plugin/PluginProcessor.cpp
-            src/plugin/PluginEditor.cpp
     )
-    target_include_directories(dunecrusher_verify PRIVATE src/dsp src/plugin)
     target_compile_definitions(dunecrusher_verify
         PRIVATE
             JUCE_PLUGINHOST_VST3=1
-            JUCE_WEB_BROWSER=0
+            JUCE_WEB_BROWSER=1
             JUCE_USE_CURL=0
             JUCE_REPORT_APP_USAGE=0
     )
@@ -101,5 +111,6 @@ if(DUNECRUSHER_BUILD_TESTS)
         PRIVATE
             juce::juce_audio_utils
             juce::juce_audio_processors
+            juce::juce_gui_extra
     )
 endif()

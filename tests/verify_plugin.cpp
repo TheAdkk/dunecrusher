@@ -1,9 +1,6 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
-#include "PluginProcessor.h"
-#include "PluginEditor.h"
-
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -79,65 +76,18 @@ bool verifyHostedVST3(const juce::String& vst3Path) {
     }
     instance->setStateInformation(saved.getData(), static_cast<int>(saved.getSize()));
 
-    // Verify hosted editor instantiation & teardown
+    // Verify hosted JUCE 8 WebView editor instantiation & teardown
     if (std::unique_ptr<juce::AudioProcessorEditor> ed(instance->createEditorAndMakeActive()); ed != nullptr) {
-        std::printf("Hosted editor bounds: %dx%d\n", ed->getWidth(), ed->getHeight());
+        std::printf("Hosted WebView editor bounds: %dx%d\n", ed->getWidth(), ed->getHeight());
+        if (ed->getWidth() != 640 || ed->getHeight() != 492) {
+            std::fprintf(stderr, "FAIL: Unexpected editor bounds\n");
+            return false;
+        }
     } else {
         std::fprintf(stderr, "FAIL: Hosted editor returned null\n");
         return false;
     }
 
-    return true;
-}
-
-bool renderScreenshot(const juce::String& outPath) {
-    DuneCrusherProcessor proc;
-    proc.prepareToPlay(44100.0, 512);
-    proc.applyPreset(1, false); // "Desert Grit" — all stages + SLAM active
-
-    // Drive real audio through DSP so meters show authentic signal & gain reduction
-    juce::AudioBuffer<float> buf(2, 512);
-    juce::MidiBuffer midi;
-    for (int blk = 0; blk < 12; ++blk) {
-        for (int s = 0; s < 512; ++s) {
-            const float t = static_cast<float>(blk * 512 + s) / 44100.0f;
-            const float sigL = 0.42f * std::sin(2.0f * 3.14159265f * 110.0f * t)
-                             + 0.18f * std::sin(2.0f * 3.14159265f * 330.0f * t);
-            const float sigR = 0.36f * std::sin(2.0f * 3.14159265f * 110.0f * t + 0.3f)
-                             + 0.22f * std::sin(2.0f * 3.14159265f * 440.0f * t);
-            buf.setSample(0, s, sigL);
-            buf.setSample(1, s, sigR);
-        }
-        proc.processBlock(buf, midi);
-    }
-
-    std::unique_ptr<DuneCrusherEditor> editor(static_cast<DuneCrusherEditor*>(proc.createEditor()));
-    if (!editor) return false;
-    editor->syncVisualStateNow();
-
-    juce::Image img(juce::Image::ARGB, editor->getWidth() * 2, editor->getHeight() * 2, true);
-    {
-        juce::Graphics g(img);
-        g.addTransform(juce::AffineTransform::scale(2.0f));
-        editor->paintEntireComponent(g, true);
-    }
-    juce::File outFile(outPath);
-    outFile.getParentDirectory().createDirectory();
-    outFile.deleteFile();
-    juce::FileOutputStream fos(outFile);
-    if (!fos.openedOk()) {
-        std::fprintf(stderr, "FAIL: Could not open screenshot path: %s\n", outPath.toRawUTF8());
-        return false;
-    }
-
-    juce::PNGImageFormat png;
-    if (!png.writeImageToStream(img, fos)) {
-        std::fprintf(stderr, "FAIL: PNG write failed\n");
-        return false;
-    }
-
-    std::printf("Saved 2x Retina UI screenshot (%dx%d) to %s\n",
-                img.getWidth(), img.getHeight(), outPath.toRawUTF8());
     return true;
 }
 
@@ -147,7 +97,7 @@ int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI guiInit;
 
     if (argc < 2) {
-        std::fprintf(stderr, "Usage: dunecrusher_verify <path/to/DuneCrusher.vst3> [screenshot.png]\n");
+        std::fprintf(stderr, "Usage: dunecrusher_verify <path/to/DuneCrusher.vst3>\n");
         return 2;
     }
 
@@ -155,12 +105,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (argc >= 3) {
-        if (!renderScreenshot(argv[2])) {
-            return 1;
-        }
-    }
-
-    std::printf("DUNECUSHER VST3 RUNTIME VERIFICATION PASSED\n");
+    std::printf("DUNECUSHER VST3 + WEBVIEW RUNTIME VERIFICATION PASSED\n");
     return 0;
 }

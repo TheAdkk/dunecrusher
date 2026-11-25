@@ -13,6 +13,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Build React + Tailwind WebView UI bundle
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
       - name: Configure CMake (Apple Silicon)
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
 
@@ -22,7 +35,7 @@ jobs:
       - name: Run DSP unit tests
         run: ctest --test-dir build --output-on-failure
 
-      - name: Run hosted VST3 runtime smoke verification
+      - name: Run hosted VST3 + WebView runtime verification
         run: |
           ./build/dunecrusher_verify_artefacts/Release/dunecrusher_verify \
             ./build/DuneCrusher_artefacts/Release/VST3/DuneCrusher.vst3
