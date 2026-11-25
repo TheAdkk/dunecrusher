@@ -1,0 +1,36 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  macos-arm64:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake (Apple Silicon)
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
+
+      - name: Build AU, VST3, and tests
+        run: cmake --build build --config Release --parallel
+
+      - name: Run DSP unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run hosted VST3 runtime smoke verification
+        run: |
+          ./build/dunecrusher_verify_artefacts/Release/dunecrusher_verify \
+            ./build/DuneCrusher_artefacts/Release/VST3/DuneCrusher.vst3
+
+      - name: Upload macOS ARM64 plugin bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuneCrusher-macOS-arm64
+          path: |
+            build/DuneCrusher_artefacts/Release/AU/DuneCrusher.component
+            build/DuneCrusher_artefacts/Release/VST3/DuneCrusher.vst3
